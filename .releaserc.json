@@ -1,0 +1,16 @@
+{
+  "repository": "git@github.com:CityOfPhiladelphia/vue-sso.git",
+  "branches": [ "main", "beta" ],
+  "plugins": [
+    ["@semantic-release/commit-analyzer", {
+      "preset": "conventionalcommits"
+    }],
+    ["@semantic-release/release-notes-generator", {
+      "preset": "conventionalcommits"
+    }],
+    ["@semantic-release/npm", {
+      "tarballDir": "dist",
+      "allowSameVersion": true
+    }]
+  ]
+}
