@@ -54,7 +54,7 @@ For you login, logout and forgot password buttons you can do.
   class="button is-primary"
   :class="{ 'is-loading': $store.state.phillyAccount.signingOut }"
   :disabled="$store.state.phillyAccount.signingOut"
-  @click="signOut"
+  @click="$store.dispatch('phillyAccount/msalSignOut')"
 >
   Sign out
 </button>
