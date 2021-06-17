@@ -11,6 +11,9 @@
   },
   "author": "",
   "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@azure/msal-browser": "^2.14.2"
   },
