@@ -9,7 +9,6 @@ Install it using `npm install @phila/vue-sso`.
 And then in your `main.js` paste the following code, and update accordingly.
 
 ```
-// Inject $hello(msg) in Vue, context and store.
 const config = {
   clientId: '[my-client-uuid]', // Default is null. 
   b2cEnvirontment: 'PhilaB2CDev', // Production will be philab2c.
