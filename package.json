@@ -1,0 +1,11 @@
+{
+  "name": "@phila/vue-sso",
+  "version": "1.0.0",
+  "description": "SSO connection and redirect library for a vue app.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
