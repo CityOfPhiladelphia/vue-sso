@@ -23,7 +23,7 @@ const config = {
   signOutAction: 'auth/signOut', // Store action to be executed before loging out redirection. No paramters are pass over the action.
 };
 
-Vue.use(vueSso, { store, config }); // The store is required.
+Vue.use(VueSSO, { store, config }); // The store is required.
 ```
 
 For you login, logout and forgot password buttons you can do. 
@@ -54,10 +54,10 @@ For you login, logout and forgot password buttons you can do.
   class="button is-primary"
   :class="{ 'is-loading': $store.state.phillyAccount.signingOut }"
   :disabled="$store.state.phillyAccount.signingOut"
-  @click="signOut"
+  @click="$store.dispatch('phillyAccount/msalSignOut')"
 >
   Sign out
 </button>
 ```
 
-This library will inject into your vuex store (that why the store is required) a new module called phillyAccount with the required statuses, mutations, and actions for page redirection SSO process.
+This library will inject into your vuex store (that's why the store is required) a new module called *phillyAccount* with the required statuses, mutations, and actions for page all redirection SSO process.
