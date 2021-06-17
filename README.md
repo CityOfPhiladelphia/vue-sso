@@ -60,4 +60,4 @@ For you login, logout and forgot password buttons you can do.
 </button>
 ```
 
-This library will inject into your vuex store (that why the store is required) a new module called phillyAccount with the required statuses, mutations, and actions for page redirection SSO process.
+This library will inject into your vuex store (that's why the store is required) a new module called *phillyAccount* with the required statuses, mutations, and actions for page all redirection SSO process.
