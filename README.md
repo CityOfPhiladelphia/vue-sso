@@ -23,7 +23,7 @@ const config = {
   signOutAction: 'auth/signOut', // Store action to be executed before loging out redirection. No paramters are pass over the action.
 };
 
-Vue.use(vueSso, { store, config }); // The store is required.
+Vue.use(VueSSO, { store, config }); // The store is required.
 ```
 
 For you login, logout and forgot password buttons you can do. 
