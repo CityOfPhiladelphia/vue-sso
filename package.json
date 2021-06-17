@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "SSO connection and redirect library for a vue app.",
   "author": "City Of Philadelphia",
-  "main": "dist/phila-ui.umd.js",
-  "module": "dist/phila-ui.esm.js",
-  "unpkg": "dist/phila-ui.min.js",
+  "main": "dist/vue-sso.umd.js",
+  "module": "dist/vue-sso.esm.js",
+  "unpkg": "dist/vue-sso.min.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "rollup --config rollup.config.js"
