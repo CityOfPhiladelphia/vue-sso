@@ -221,8 +221,9 @@ const ssoLib = (config) => {
               if (error.errorMessage.indexOf("AADB2C90118") > -1) {
                 dispatch('msalForgotPassword');
               } else {
-                if (this.$route) {
-                  this.$route.push(msalConfig.auth.redirectUri);
+                if (this.$router) {
+                  const url = new URL(msalConfig.auth.redirectUri);
+                  this.$router.replace(`${url.pathname}${url.search}${url.hash}`);
                 } else {
                   document.location = msalConfig.auth.redirectUri;
                 }

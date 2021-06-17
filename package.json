@@ -8,14 +8,16 @@
   "unpkg": "dist/vue-sso.min.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rollup --config rollup.config.js"
+    "build": "rollup --config rollup.config.js",
+    "watch": "rollup --watch --config rollup.config.js"
   },
   "license": "MIT",
   "publishConfig": {
     "access": "public"
   },
   "dependencies": {
-    "@azure/msal-browser": "^2.14.2"
+    "@azure/msal-browser": "^2.14.2",
+    "url-polyfill": "^1.1.12"
   },
   "devDependencies": {
     "@babel/core": "^7.14.6",
