@@ -200,6 +200,7 @@ const ssoLib = (config) => {
       },
 
       handleRedirect({ commit, dispatch }) {
+        console.log('Attempting to handle redirect promise...');
         myMSALObj.handleRedirectPromise()
           .then(response => {
             if (response) {
@@ -216,7 +217,7 @@ const ssoLib = (config) => {
             }
           })
           .catch(error => {
-            console.log(error);
+            console.log("Handle Redirect Error", error);
             if (error.errorMessage) {
               if (error.errorMessage.indexOf("AADB2C90118") > -1) {
                 dispatch('msalForgotPassword');
@@ -249,7 +250,9 @@ export default {
   
     // Handle page refresh.
     store.dispatch('phillyAccount/selectAccount');
- 
-    store.dispatch('phillyAccount/handleRedirect');
+    
+    if (!config.dontHandleRedirectAutomatically) {
+      store.dispatch('phillyAccount/handleRedirect');
+    }
   },
 };
