@@ -25,7 +25,7 @@ const config = {
 
 Vue.use(VueSSO, { store, config }); // The store is required.
 ```
-The Vue.install function executes the *handleRedirect* action automatically on each refresh, it means, the MSAL library is automatically checking if your refresh comes from a Microsoft B2C process. If you want to control this yourself on your own situation, e.g. only when the redirection is on "authentication" page, then, in your config object you add `dontHandleRedirectAutomatically: true` and then, you must `dispatch('phillyAccount/handleRedirect')` on your own.
+The Vue.install function executes the *handleRedirect* action automatically on each refresh, it means, the MSAL library is always checking if your refresh comes from a Microsoft B2C process. If you want to control this yourself on your own situation, e.g. only when the redirection is on "authentication" page, then, in your config object you add `dontHandleRedirectAutomatically: true` and then, you must `dispatch('phillyAccount/handleRedirect')` on your own.
 
 
 For you login, logout and forgot password buttons you can do. 
