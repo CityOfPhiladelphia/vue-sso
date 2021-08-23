@@ -13,6 +13,11 @@ const ssoLib = (config) => {
     signOutAction: 'auth/signOut',
   };
 
+  // Composed settings.
+  let b2cScopes = [ `https://${settings.b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
+  settings.loginRequestScopes = [ "openid", ...b2cScopes ];
+  settings.tokenRequestScopes = [ ...b2cScopes ];
+
   const localSettings = !config ? {} : config;
   for (const s in localSettings) {
     if (typeof settings[s] !== 'undefined') {
@@ -71,16 +76,12 @@ const ssoLib = (config) => {
     },
   };
   
-  const apiConfig = {
-    b2cScopes: [ `https://${settings.b2cEnvirontment}.onmicrosoft.com/api/read_data` ],
-  };
-  
   const loginRequest = {
-    scopes: [ "openid", ...apiConfig.b2cScopes ],
+    scopes: settings.loginRequestScopes,
   };
   
   const tokenRequest = {
-    scopes: [ ...apiConfig.b2cScopes ],
+    scopes: settings.tokenRequestScopes,
     forceRefresh: false,
   };
   
