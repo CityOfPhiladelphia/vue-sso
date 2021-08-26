@@ -8,6 +8,7 @@ const ssoLib = (config) => {
     authorityDomain: 'PhilaB2CDev.b2clogin.com',
     redirectUri: 'http://localhost:3000/auth',
     signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN',
+    resetPasswordPolicy: 'B2C_1A_PASSWORDRESET',
 
     signInAction: 'auth/authenticate',
     signOutAction: 'auth/signOut',
@@ -34,7 +35,7 @@ const ssoLib = (config) => {
         authority: `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.signUpSignInPolicy}`,
       },
       forgotPassword: {
-        authority: `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/B2C_1A_PASSWORDRESET`,
+        authority: `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.resetPasswordPolicy}`,
       },
     },
     authorityDomain: settings.authorityDomain,
