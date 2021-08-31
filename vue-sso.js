@@ -12,6 +12,7 @@ const ssoLib = (config) => {
 
     signInAction: 'auth/authenticate',
     signOutAction: 'auth/signOut',
+    errorHandler: null,
   };
 
   // Composed settings.
@@ -94,6 +95,7 @@ const ssoLib = (config) => {
     state: ({
       signInAction: settings.signInAction,
       signOutAction: settings.signOutAction,
+      errorHandler: settings.errorHandler,
   
       msalAccount: {},
       accessToken: null,
@@ -202,7 +204,7 @@ const ssoLib = (config) => {
         }
       },
 
-      handleRedirect({ commit, dispatch }, authTokenParams = {}) {
+      handleRedirect({ state, commit, dispatch }, authTokenParams = {}) {
         console.log('Attempting to handle redirect promise...');
         myMSALObj.handleRedirectPromise()
           .then(response => {
@@ -225,11 +227,11 @@ const ssoLib = (config) => {
               if (error.errorMessage.indexOf("AADB2C90118") > -1) {
                 dispatch('msalForgotPassword');
               } else {
-                if (this.$router) {
-                  const url = new URL(msalConfig.auth.redirectUri);
-                  this.$router.replace(`${url.pathname}${url.search}${url.hash}`);
+                // I believe it is better to throw and error and let the user handle it at convinience.
+                if (state.errorHandler) {
+                  dispatch(state.errorHandler, error, { root: true });
                 } else {
-                  document.location = msalConfig.auth.redirectUri;
+                  throw Error(error);
                 }
               }
             }
