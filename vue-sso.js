@@ -77,11 +77,11 @@ const ssoLib = (config) => {
     },
   };
   
-  const loginRequest = {
+  let loginRequest = {
     scopes: settings.loginRequestScopes,
   };
   
-  const tokenRequest = {
+  let tokenRequest = {
     scopes: settings.tokenRequestScopes,
     forceRefresh: false,
   };
@@ -155,8 +155,9 @@ const ssoLib = (config) => {
         }
       },
   
-      async msalSignIn({ commit }) {
+      async msalSignIn({ commit }, params = {}) {
         commit('setSigningIn', true);
+        loginRequest = Object.assign(loginRequest, params);
         myMSALObj.loginRedirect(loginRequest);
       },
   
@@ -174,9 +175,9 @@ const ssoLib = (config) => {
         myMSALObj.loginRedirect(b2cPolicies.authorities.forgotPassword);
       },
   
-      async getAuthToken({ state, commit, dispatch }) {
+      async getAuthToken({ state, commit, dispatch }, params = {}) {
         tokenRequest.account = myMSALObj.getAccountByHomeId(state.msalAccount.homeAccountId);
-  
+        tokenRequest = Object.assign(tokenRequest, params);
         try {
           const response = await myMSALObj.acquireTokenSilent(tokenRequest);
           if (!response.accessToken || response.accessToken === "") {
@@ -201,7 +202,7 @@ const ssoLib = (config) => {
         }
       },
 
-      handleRedirect({ commit, dispatch }) {
+      handleRedirect({ commit, dispatch }, authTokenParams = {}) {
         console.log('Attempting to handle redirect promise...');
         myMSALObj.handleRedirectPromise()
           .then(response => {
@@ -214,7 +215,7 @@ const ssoLib = (config) => {
                 dispatch('selectAccount');
 
                 // Let's get the SSO token.
-                dispatch('getAuthToken');
+                dispatch('getAuthToken', authTokenParams);
               }
             }
           })
