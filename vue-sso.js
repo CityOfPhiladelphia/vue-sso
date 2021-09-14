@@ -224,7 +224,7 @@ const ssoLib = (config) => {
               } else if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
                 if (state.forgotPasswordAction) {
                   commit('setRedirectingForgotPassword', true);
-                  await dispatch(state.forgotPasswordAction, response, { root: true });
+                  dispatch(state.forgotPasswordAction, response, { root: true });
                 }
               }
             }
