@@ -12,6 +12,7 @@ const ssoLib = (config) => {
 
     signInAction: 'auth/authenticate',
     signOutAction: 'auth/signOut',
+    forgotPasswordAction: null,
     errorHandler: null,
   };
 
@@ -30,6 +31,7 @@ const ssoLib = (config) => {
   const b2cPolicies = {
     names: {
       signUpSignIn: settings.signUpSignInPolicy,
+      forgotPassword: settings.resetPasswordPolicy
     },
     authorities: {
       signUpSignIn: {
@@ -95,6 +97,7 @@ const ssoLib = (config) => {
     state: ({
       signInAction: settings.signInAction,
       signOutAction: settings.signOutAction,
+      forgotPasswordAction: settings.forgotPasswordAction,
       errorHandler: settings.errorHandler,
   
       msalAccount: {},
@@ -218,6 +221,11 @@ const ssoLib = (config) => {
 
                 // Let's get the SSO token.
                 dispatch('getAuthToken', authTokenParams);
+              } else if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
+                if (state.forgotPasswordAction) {
+                  commit('setRedirectingForgotPassword', true);
+                  await dispatch(state.forgotPasswordAction, response, { root: true });
+                }
               }
             }
           })
