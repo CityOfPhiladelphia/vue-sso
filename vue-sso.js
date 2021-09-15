@@ -228,6 +228,7 @@ const ssoLib = (config) => {
                 }
               }
             }
+            return;
           })
           .catch(error => {
             console.log("Handle Redirect Error", error);
@@ -243,6 +244,7 @@ const ssoLib = (config) => {
                 }
               }
             }
+            return;
           });
       },
     },
