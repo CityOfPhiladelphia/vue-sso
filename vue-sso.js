@@ -76,7 +76,7 @@ const ssoLib = (config) => {
       storeAuthStateInCookie: false,
     },
     system: {
-      logger: settings.debug ? new Msal.Logger(
+      logger: settings.debug ? new msal.Logger(
         loggerCallback, {
             level: msal.LogLevel.Verbose,
             piiLoggingEnabled: false,
