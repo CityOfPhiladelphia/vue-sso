@@ -1,5 +1,24 @@
 import * as msal from "@azure/msal-browser";
 
+function loggerCallback(level, message, containsPii) {
+  if (containsPii) {
+    return;
+  }
+  switch (level) {
+  case msal.LogLevel.Error:
+    console.error(message);
+    return;
+  case msal.LogLevel.Info:
+    console.info(message);
+    return;
+  case msal.LogLevel.Verbose:
+    console.debug(message);
+    return;
+  case msal.LogLevel.Warning:
+    console.warn(message);
+    return;
+  }
+};
 
 const ssoLib = (config) => {
   let settings = {
@@ -14,6 +33,7 @@ const ssoLib = (config) => {
     signOutAction: 'auth/signOut',
     forgotPasswordAction: null,
     errorHandler: null,
+    debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
   };
 
   // Composed settings.
@@ -56,27 +76,11 @@ const ssoLib = (config) => {
       storeAuthStateInCookie: false,
     },
     system: {
-      loggerOptions: {
-        loggerCallback: (level, message, containsPii) => {
-          if (containsPii) {
-            return;
-          }
-          switch (level) {
-          case msal.LogLevel.Error:
-            console.error(message);
-            return;
-          case msal.LogLevel.Info:
-            console.info(message);
-            return;
-          case msal.LogLevel.Verbose:
-            console.debug(message);
-            return;
-          case msal.LogLevel.Warning:
-            console.warn(message);
-            return;
-          }
-        },
-      },
+      logger: settings.debug ? new Msal.Logger(
+        loggerCallback, {
+            level: msal.LogLevel.Verbose,
+            piiLoggingEnabled: false,
+        }) : null,
     },
   };
   
@@ -107,6 +111,7 @@ const ssoLib = (config) => {
       signingIn: false,
       signingOut: false,
       redirectingForgotPassword: false,
+      debug: settings.debug,
     }),
   
     mutations: {
@@ -188,31 +193,34 @@ const ssoLib = (config) => {
           if (!response.accessToken || response.accessToken === "") {
             throw new msal.InteractionRequiredAuthError;
           } else {
-            console.log("access_token acquired at: " + new Date().toString());
+            if (state.debug) console.log("access_token acquired at: " + new Date().toString());
             commit('setToken', response.accessToken);
             await dispatch(state.signInAction, response.accessToken, { root: true });
           }
         } catch (error) {
-          console.log("Silent token acquisition fails. Acquiring token using redirect. \n", error);
+          if (state.debug) console.log("Silent token acquisition fails. Acquiring token using redirect. \n", error);
           if (error instanceof msal.InteractionRequiredAuthError) {
             // fallback to interaction when silent call fails
             try {
               return myMSALObj.acquireTokenRedirect(tokenRequest);
             } catch (error) {
-              console.log(error);
+              if (state.debug) console.log(error);
             }
           } else {
-            console.log(error);
+            if (state.debug) console.log(error);
           }
         }
       },
 
       handleRedirect({ state, commit, dispatch }, authTokenParams = {}) {
-        console.log('Attempting to handle redirect promise...');
+        if (state.debug) console.log('Attempting to handle redirect promise...');
         myMSALObj.handleRedirectPromise()
           .then(response => {
+            if (state.debug) console.log("Redirect response: ", response);
             if (response) {
               if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.signUpSignIn.toUpperCase()) {
+                if (state.debug) console.log('Went throu login');
+
                 // Set the state signing-in to true, the user is still signing into the system.
                 commit('setSigningIn', true);
 
@@ -222,6 +230,7 @@ const ssoLib = (config) => {
                 // Let's get the SSO token.
                 dispatch('getAuthToken', authTokenParams);
               } else if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
+                if (state.debug) console.log('Went throu forgot password');
                 if (state.forgotPasswordAction) {
                   commit('setRedirectingForgotPassword', true);
                   dispatch(state.forgotPasswordAction, response, { root: true });
@@ -231,7 +240,7 @@ const ssoLib = (config) => {
             return;
           })
           .catch(error => {
-            console.log("Handle Redirect Error", error);
+            if (state.debug) console.log("Handle Redirect Error", error);
             if (error.errorMessage) {
               if (error.errorMessage.indexOf("AADB2C90118") > -1) {
                 dispatch('msalForgotPassword');
