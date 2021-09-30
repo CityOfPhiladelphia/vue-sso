@@ -25,10 +25,10 @@ const ssoLib = (config) => {
     clientId: null,
     b2cEnvirontment: 'PhilaB2CDev',
     authorityDomain: 'PhilaB2CDev.b2clogin.com',
-    redirectUri: 'http://localhost:3000/auth',
+    redirectUri: 'http://localhost:8080/auth',
+    postLogoutRedirectUri: null,
     signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN',
     resetPasswordPolicy: 'B2C_1A_PASSWORDRESET',
-
     signInAction: 'auth/authenticate',
     signOutAction: 'auth/signOut',
     forgotPasswordAction: null,
@@ -40,6 +40,11 @@ const ssoLib = (config) => {
   let b2cScopes = [ `https://${settings.b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
   settings.loginRequestScopes = [ "openid", ...b2cScopes ];
   settings.tokenRequestScopes = [ ...b2cScopes ];
+
+  // Set postLogoutRedirectUri
+  if (!settings.postLogoutRedirectUri) {
+    settings.postLogoutRedirectUri = settings.redirectUri;
+  }
 
   const localSettings = !config ? {} : config;
   for (const s in localSettings) {
@@ -70,6 +75,7 @@ const ssoLib = (config) => {
       authority: b2cPolicies.authorities.signUpSignIn.authority,
       knownAuthorities: [ b2cPolicies.authorityDomain ],
       redirectUri: settings.redirectUri,
+      postLogoutRedirectUri: settings.postLogoutRedirectUri,
     },
     cache: {
       cacheLocation: "sessionStorage",
@@ -171,10 +177,16 @@ const ssoLib = (config) => {
         myMSALObj.loginRedirect(loginRequest);
       },
   
-      async msalSignOut({ state, commit, dispatch }) {
+      async msalSignOut({ state, commit, dispatch }, redirectQueryParams = '') {
         commit('setSigningOut', true);
+
+        let redirectURL = msalConfig.auth.postLogoutRedirectUri;
+        if (typeof redirectQueryParams === 'string') {
+          redirectURL += `?${redirectQueryParams}`;
+        }
+
         const logoutRequest = {
-          postLogoutRedirectUri: msalConfig.auth.redirectUri,
+          postLogoutRedirectUri: redirectURL,
         };
         await dispatch(state.signOutAction, {}, { root: true });
         myMSALObj.logoutRedirect(logoutRequest);
