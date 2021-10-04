@@ -181,7 +181,7 @@ const ssoLib = (config) => {
         commit('setSigningOut', true);
 
         let redirectURL = msalConfig.auth.postLogoutRedirectUri;
-        if (typeof redirectQueryParams === 'string') {
+        if (typeof redirectQueryParams === 'string' && redirectQueryParams != '') {
           redirectURL += `?${redirectQueryParams}`;
         }
 
