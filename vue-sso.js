@@ -41,16 +41,16 @@ const ssoLib = (config) => {
   settings.loginRequestScopes = [ "openid", ...b2cScopes ];
   settings.tokenRequestScopes = [ ...b2cScopes ];
 
-  // Set postLogoutRedirectUri
-  if (!settings.postLogoutRedirectUri) {
-    settings.postLogoutRedirectUri = settings.redirectUri;
-  }
-
   const localSettings = !config ? {} : config;
   for (const s in localSettings) {
     if (typeof settings[s] !== 'undefined') {
       settings[s] = localSettings[s];
     }
+  }
+
+  // Set postLogoutRedirectUri
+  if (!settings.postLogoutRedirectUri) {
+    settings.postLogoutRedirectUri = settings.redirectUri;
   }
 
   const b2cPolicies = {
