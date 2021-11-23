@@ -18,9 +18,12 @@ const config = {
   authorityDomain: 'PhilaB2CDev.b2clogin.com', // Production will be login.phila.gov
   redirectUri: 'http://localhost:3000/auth', // Here is your redirect back URL.
   signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN', // This is the default Sign In custom policy. (No MFA)
-
-  signInAction: 'auth/authenticate', // Store action to be executed after obtaining the token. It pass over the token as a sole parameter.
-  signOutAction: 'auth/signOut', // Store action to be executed before loging out redirection. No paramters are pass over the action.
+  dontHandleRedirectAutomatically: [Boolean], // If false, you will have to trigger the handleRedirectPromise function yourself. 
+  signInAction: '', // Store action to be executed after obtaining the token. It pass over the token as a sole parameter.
+  signOutAction: '', // Store action to be executed before loging out redirection. No paramters are pass over the action.
+  forgotPasswordAction: '', // Store action that is executed after the reset password flow.
+  errorHandler: '', // Store action to handle all non-catched-by-default errors. 
+  debug: [Boolean], // If true, the library will log a lot of information into the console. Use this on true only for development.
 };
 
 Vue.use(VueSSO, { store, config }); // The store is required.
@@ -63,3 +66,14 @@ For you login, logout and forgot password buttons you can do.
 ```
 
 This library will inject into your vuex store (that's why the store is required) a new module called *phillyAccount* with the required statuses, mutations, and actions for page all redirection SSO process.
+
+
+## Known issues:
+* Currently, there is a cache issue when the user goes through "Create Account" and returns to the app through "Sign In." The App triggers a `No Cache Authority Error`. The temporary solution is to catch the error using the `errorHandler` parameter and trigger the sign-in policy back again. This will refresh the cache and log the user back in correctly.
+
+```
+if (error.errorCode === 'no_cached_authority_error') {
+  dispatch('phillyAccount/msalSignIn', {}, { root: true });
+  return;
+}
+```
