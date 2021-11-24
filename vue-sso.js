@@ -34,7 +34,7 @@ const ssoLib = (config) => {
     forgotPasswordAction: null,
     errorHandler: null,
     debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
-    tenantId: undefined,
+    tenantId: null,
   };
 
   // Composed settings.
