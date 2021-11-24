@@ -34,6 +34,7 @@ const ssoLib = (config) => {
     forgotPasswordAction: null,
     errorHandler: null,
     debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
+    tenantId: undefined,
   };
 
   // Composed settings.
@@ -53,6 +54,18 @@ const ssoLib = (config) => {
     settings.postLogoutRedirectUri = settings.redirectUri;
   }
 
+  if (!settings.tenantId) {
+    signUpSignInAuthority = `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.signUpSignInPolicy}`;
+  } else {
+    signUpSignInAuthority = `https://${settings.authorityDomain}/${settings.tenantId}/${settings.signUpSignInPolicy}`;
+  }
+
+  if (!settings.tenantId) {
+    forgotPasswordAuthority = `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.resetPasswordPolicy}`;
+  } else {
+    forgotPasswordAuthority = `https://${settings.authorityDomain}/${settings.tenantId}/${settings.resetPasswordPolicy}`;
+  }
+
   const b2cPolicies = {
     names: {
       signUpSignIn: settings.signUpSignInPolicy,
@@ -60,10 +73,10 @@ const ssoLib = (config) => {
     },
     authorities: {
       signUpSignIn: {
-        authority: `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.signUpSignInPolicy}`,
+        authority: signUpSignInAuthority,
       },
       forgotPassword: {
-        authority: `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.resetPasswordPolicy}`,
+        authority: forgotPasswordAuthority,
       },
     },
     authorityDomain: settings.authorityDomain,
