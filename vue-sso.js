@@ -34,7 +34,7 @@ const ssoLib = (config) => {
     forgotPasswordAction: null,
     errorHandler: null,
     debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
-    tenantId: null,
+    tenantId: false,
   };
 
   // Composed settings.
@@ -54,12 +54,14 @@ const ssoLib = (config) => {
     settings.postLogoutRedirectUri = settings.redirectUri;
   }
 
+  let signUpSignInAuthority = '';
   if (!settings.tenantId) {
     signUpSignInAuthority = `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.signUpSignInPolicy}`;
   } else {
     signUpSignInAuthority = `https://${settings.authorityDomain}/${settings.tenantId}/${settings.signUpSignInPolicy}`;
   }
-
+  
+  let forgotPasswordAuthority = '';
   if (!settings.tenantId) {
     forgotPasswordAuthority = `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.resetPasswordPolicy}`;
   } else {
