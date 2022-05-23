@@ -21,6 +21,9 @@ function loggerCallback(level, message, containsPii) {
 };
 
 const ssoLib = (config) => {
+  // Initial scopes settings.
+  let b2cScopes = [ `https://${settings.b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
+
   let settings = {
     clientId: null,
     b2cEnvirontment: 'PhilaB2CDev',
@@ -35,12 +38,9 @@ const ssoLib = (config) => {
     errorHandler: null,
     debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
     tenantId: false,
+    loginRequestScopes: [ "openid", ...b2cScopes ], // The default configuration here is openid scope + initial mostly default read_data scopes.
+    tokenRequestScopes: [ ...b2cScopes ], // The default here is the initial mostly default read_data scopes.
   };
-
-  // Composed settings.
-  let b2cScopes = [ `https://${settings.b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
-  settings.loginRequestScopes = [ "openid", ...b2cScopes ];
-  settings.tokenRequestScopes = [ ...b2cScopes ];
 
   const localSettings = !config ? {} : config;
   for (const s in localSettings) {
