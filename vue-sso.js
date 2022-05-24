@@ -22,11 +22,12 @@ function loggerCallback(level, message, containsPii) {
 
 const ssoLib = (config) => {
   // Initial scopes settings.
-  let b2cScopes = [ `https://${settings.b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
+  const b2cEnvirontment = 'PhilaB2CDev';
+  const b2cScopes = [ `https://${b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
 
   let settings = {
     clientId: null,
-    b2cEnvirontment: 'PhilaB2CDev',
+    b2cEnvirontment,
     authorityDomain: 'PhilaB2CDev.b2clogin.com',
     redirectUri: 'http://localhost:8080/auth',
     postLogoutRedirectUri: null,
