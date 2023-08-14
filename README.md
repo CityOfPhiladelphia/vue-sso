@@ -29,6 +29,7 @@ const config = {
   tenantId: false, // In case of a custom tenant id like "login.phila.gov" it goes here in the parameter, if no one is entered, the library will use the default [env].onmicrosoft.com tenant value.
   loginRequestScopes: [ "openid", ...b2cScopes ], // The default configuration here is openid scope + initial mostly default read_data scopes.
   tokenRequestScopes: [ ...b2cScopes ], // The default here is the initial mostly default read_data scopes.
+  state: null, // add an state value. https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-js-pass-custom-state-authentication-request
 };
 
 Vue.use(VueSSO, { store, config }); // The store is required.
