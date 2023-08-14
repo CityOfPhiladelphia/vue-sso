@@ -41,6 +41,7 @@ const ssoLib = (config) => {
     tenantId: false,
     loginRequestScopes: [ "openid", ...b2cScopes ], // The default configuration here is openid scope + initial mostly default read_data scopes.
     tokenRequestScopes: [ ...b2cScopes ], // The default here is the initial mostly default read_data scopes.
+    state: null,
   };
 
   const localSettings = !config ? {} : config;
@@ -108,6 +109,7 @@ const ssoLib = (config) => {
   
   let loginRequest = {
     scopes: settings.loginRequestScopes,
+    state: settings.state
   };
   
   let tokenRequest = {
