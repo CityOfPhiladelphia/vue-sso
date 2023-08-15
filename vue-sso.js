@@ -178,7 +178,8 @@ const ssoLib = (config) => {
               commit('setMSALAccount', accounts[0]);
             } else {
               // Multiple users detected. Logout all to be safe.
-              dispatch('msalSignOut');
+              await dispatch('msalSignOut');
+              return null;
             }
           } else if (accounts.length === 1) {
             commit('setMSALAccount', accounts[0]);
@@ -187,12 +188,14 @@ const ssoLib = (config) => {
         } else if (currentAccounts.length === 1) {
           commit('setMSALAccount', currentAccounts[0]);
         }
+
+        return;
       },
   
       async msalSignIn({ commit }, params = {}) {
         commit('setSigningIn', true);
         loginRequest = Object.assign(loginRequest, params);
-        myMSALObj.loginRedirect(loginRequest);
+        return myMSALObj.loginRedirect(loginRequest);
       },
   
       async msalSignOut({ state, commit, dispatch }, redirectQueryParams = '') {
@@ -207,12 +210,12 @@ const ssoLib = (config) => {
           postLogoutRedirectUri: redirectURL,
         };
         await dispatch(state.signOutAction, {}, { root: true });
-        myMSALObj.logoutRedirect(logoutRequest);
+        return myMSALObj.logoutRedirect(logoutRequest);
       },
   
       msalForgotPassword({ commit }) {
         commit('setRedirectingForgotPassword', true);
-        myMSALObj.loginRedirect(b2cPolicies.authorities.forgotPassword);
+        return myMSALObj.loginRedirect(b2cPolicies.authorities.forgotPassword);
       },
   
       async getAuthToken({ state, commit, dispatch }, params = {}) {
@@ -242,49 +245,58 @@ const ssoLib = (config) => {
         }
       },
 
-      handleRedirect({ state, commit, dispatch }, authTokenParams = {}) {
+      async handleRedirect({ state, commit, dispatch }, authTokenParams = {}) {
         if (state.debug) console.log('Attempting to handle redirect promise...');
-        myMSALObj.handleRedirectPromise()
-          .then(response => {
-            if (state.debug) console.log("Redirect response: ", response);
-            if (response) {
-              if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.signUpSignIn.toUpperCase()) {
-                if (state.debug) console.log('Went throu login');
 
-                // Set the state signing-in to true, the user is still signing into the system.
-                commit('setSigningIn', true);
+        try {
+          const response = await myMSALObj.handleRedirectPromise();
+          if (state.debug) console.log("Redirect response: ", response);
 
-                // Set the phillyAccount information into the state
-                dispatch('selectAccount');
+          if (response) {
+            if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.signUpSignIn.toUpperCase()) {
+              // Set the state signing-in to true, the user is still signing into the system.
+              commit('setSigningIn', true);
 
-                // Let's get the SSO token.
-                dispatch('getAuthToken', authTokenParams);
-              } else if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
-                if (state.debug) console.log('Went throu forgot password');
-                if (state.forgotPasswordAction) {
-                  commit('setRedirectingForgotPassword', true);
-                  dispatch(state.forgotPasswordAction, response, { root: true });
-                }
+              // Set the phillyAccount information into the state
+              await dispatch('selectAccount');
+
+              // Let's get the SSO token.
+              await dispatch('getAuthToken', authTokenParams);
+
+              return response;              
+            } else if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
+              if (state.debug) console.log('Went throu forgot password');
+              if (state.forgotPasswordAction) {
+                commit('setRedirectingForgotPassword', true);
+
+                await dispatch(state.forgotPasswordAction, response, { root: true });
               }
+
+              return response;
             }
-            return;
-          })
-          .catch(error => {
-            if (state.debug) console.log("Handle Redirect Error", error);
-            if (error.errorMessage) {
-              if (error.errorMessage.indexOf("AADB2C90118") > -1) {
-                dispatch('msalForgotPassword');
+          }
+          
+          commit('setSigningIn', false);
+          return null;
+        } catch (error) {
+          if (state.debug) console.log('Error while handling redirect promise', error);
+
+          if (error.errorMessage) {
+            if (error.errorMessage.indexOf("AADB2C90118") > -1) {
+              await dispatch('msalForgotPassword');
+              return null;
+            } else {
+              // I believe it is better to throw and error and let the user handle it at convinience.
+              if (state.errorHandler) {
+                await dispatch(state.errorHandler, error, { root: true });
               } else {
-                // I believe it is better to throw and error and let the user handle it at convinience.
-                if (state.errorHandler) {
-                  dispatch(state.errorHandler, error, { root: true });
-                } else {
-                  throw Error(error);
-                }
+                throw Error(error);
               }
             }
-            return;
-          });
+          }
+
+          return error;
+        }
       },
     },
   };
