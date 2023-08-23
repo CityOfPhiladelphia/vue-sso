@@ -1,151 +1,185 @@
 import * as msal from "@azure/msal-browser";
 
+const B2C_1A_AD_SIGNIN_ONLY = 'B2C_1A_AD_SIGNIN_ONLY';
+
 function loggerCallback(level, message, containsPii) {
   if (containsPii) {
     return;
   }
   switch (level) {
-  case msal.LogLevel.Error:
-    console.error(message);
-    return;
-  case msal.LogLevel.Info:
-    console.info(message);
-    return;
-  case msal.LogLevel.Verbose:
-    console.debug(message);
-    return;
-  case msal.LogLevel.Warning:
-    console.warn(message);
-    return;
+    case msal.LogLevel.Error:
+      console.error(message);
+      return;
+    case msal.LogLevel.Info:
+      console.info(message);
+      return;
+    case msal.LogLevel.Verbose:
+      console.debug(message);
+      return;
+    case msal.LogLevel.Warning:
+      console.warn(message);
+      return;
   }
 };
 
-const ssoLib = (config) => {
-  // Initial scopes settings.
-  const b2cEnvirontment = 'PhilaB2CDev';
-  const b2cScopes = [ `https://${b2cEnvirontment}.onmicrosoft.com/api/read_data` ];
-
-  let settings = {
-    clientId: null,
-    b2cEnvirontment,
-    authorityDomain: 'PhilaB2CDev.b2clogin.com',
-    redirectUri: 'http://localhost:8080/auth',
-    postLogoutRedirectUri: null,
-    signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN',
-    resetPasswordPolicy: 'B2C_1A_PASSWORDRESET',
-    signInAction: 'auth/authenticate',
-    signOutAction: 'auth/signOut',
-    forgotPasswordAction: null,
-    errorHandler: null,
-    debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
-    tenantId: false,
-    loginRequestScopes: [ "openid", ...b2cScopes ], // The default configuration here is openid scope + initial mostly default read_data scopes.
-    tokenRequestScopes: [ ...b2cScopes ], // The default here is the initial mostly default read_data scopes.
-    state: null,
-  };
-
-  const localSettings = !config ? {} : config;
-  for (const s in localSettings) {
-    if (typeof settings[s] !== 'undefined') {
-      settings[s] = localSettings[s];
-    }
-  }
-
-  // Set postLogoutRedirectUri
-  if (!settings.postLogoutRedirectUri) {
-    settings.postLogoutRedirectUri = settings.redirectUri;
-  }
-
-  let signUpSignInAuthority = '';
-  if (!settings.tenantId) {
-    signUpSignInAuthority = `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.signUpSignInPolicy}`;
-  } else {
-    signUpSignInAuthority = `https://${settings.authorityDomain}/${settings.tenantId}/${settings.signUpSignInPolicy}`;
-  }
-  
-  let forgotPasswordAuthority = '';
-  if (!settings.tenantId) {
-    forgotPasswordAuthority = `https://${settings.authorityDomain}/${settings.b2cEnvirontment}.onmicrosoft.com/${settings.resetPasswordPolicy}`;
-  } else {
-    forgotPasswordAuthority = `https://${settings.authorityDomain}/${settings.tenantId}/${settings.resetPasswordPolicy}`;
-  }
-
-  const b2cPolicies = {
-    names: {
-      signUpSignIn: settings.signUpSignInPolicy,
-      forgotPassword: settings.resetPasswordPolicy
-    },
-    authorities: {
-      signUpSignIn: {
-        authority: signUpSignInAuthority,
-      },
-      forgotPassword: {
-        authority: forgotPasswordAuthority,
-      },
-    },
-    authorityDomain: settings.authorityDomain,
-  };
-  
-  const msalConfig = {
-    auth: {
-      clientId: settings.clientId,
-      authority: b2cPolicies.authorities.signUpSignIn.authority,
-      knownAuthorities: [ b2cPolicies.authorityDomain ],
-      redirectUri: settings.redirectUri,
-      postLogoutRedirectUri: settings.postLogoutRedirectUri,
-    },
-    cache: {
-      cacheLocation: "sessionStorage",
-      storeAuthStateInCookie: false,
-    },
-    system: {
-      logger: settings.debug ? new msal.Logger(
-        loggerCallback, {
-            level: msal.LogLevel.Verbose,
-            piiLoggingEnabled: false,
-        }) : null,
-    },
-  };
-  
-  let loginRequest = {
-    scopes: settings.loginRequestScopes,
-    state: settings.state
-  };
-  
-  let tokenRequest = {
-    scopes: settings.tokenRequestScopes,
-    forceRefresh: false,
-  };
-  
-  let myMSALObj = new msal.PublicClientApplication(msalConfig);
-  
+const ssoLib = () => {
   // Store object. 
   const phillyAccount = {
     namespaced: true,
     state: ({
-      signInAction: settings.signInAction,
-      signOutAction: settings.signOutAction,
-      forgotPasswordAction: settings.forgotPasswordAction,
-      errorHandler: settings.errorHandler,
-  
+      signInAction: '',
+      signOutAction: '',
+      forgotPasswordAction: '',
+      errorHandler: '',
+
       msalAccount: {},
       accessToken: null,
-  
+
       // Statuses
       signingIn: false,
       signingOut: false,
       redirectingForgotPassword: false,
-      debug: settings.debug,
+      debug: false,
+
+      b2cScopes: [],
+
+      settings: {
+        clientId: null,
+        b2cEnvirontment: 'PhilaB2CDev',
+        authorityDomain: 'PhilaB2CDev.b2clogin.com',
+        redirectUri: 'http://localhost:8080/auth',
+        postLogoutRedirectUri: null,
+        signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN',
+        resetPasswordPolicy: 'B2C_1A_PASSWORDRESET',
+        signInAction: 'auth/authenticate',
+        signOutAction: 'auth/signOut',
+        forgotPasswordAction: null,
+        errorHandler: null,
+        debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
+        tenantId: false,
+        state: null,
+        cityEmployee: false,
+      },
+
+      b2cPlicies: {},
+      msalConfig: {},
+      loginRequest: {},
+      tokenRequest: {},
+      myMSALObj: {},
     }),
-  
+
     mutations: {
+      setMSALObject(state, config) {
+        state.myMSALObj = null;
+
+        state.b2cScopes =  [`https://${state.settings.b2cEnvirontment}.onmicrosoft.com/api/read_data`];
+        
+        // Default scopes
+        state.settings.loginRequestScopes = [ "openid", ...state.b2cScopes ];
+        state.settings.tokenRequestScopes = [ ...state.b2cScopes ];
+
+        const localSettings = !config ? {} : config;
+        for (const s in localSettings) {
+          if (typeof state.settings[s] !== 'undefined') {
+            state.settings[s] = localSettings[s];
+          }
+        }
+
+        if (state.settings.cityEmployee) {
+          if (state.settings.debug) console.log('City employee detected');
+          state.settings.signUpSignInPolicy = B2C_1A_AD_SIGNIN_ONLY;
+        }
+
+        state.signInAction = state.settings.signInAction;
+        state.signOutAction = state.settings.signOutAction;
+        state.forgotPasswordAction = state.settings.forgotPasswordAction;
+        state.errorHandler = state.settings.errorHandler;
+        state.debug = state.settings.debug;
+
+        // Set postLogoutRedirectUri
+        if (!state.settings.postLogoutRedirectUri) {
+          state.settings.postLogoutRedirectUri = state.settings.redirectUri;
+        }
+
+        let signUpSignInAuthority = '';
+        if (!state.settings.tenantId) {
+          signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvirontment}.onmicrosoft.com/${state.settings.signUpSignInPolicy}`;
+        } else {
+          signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.signUpSignInPolicy}`;
+        }
+
+        let forgotPasswordAuthority = '';
+        if (!state.settings.tenantId) {
+          forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvirontment}.onmicrosoft.com/${state.settings.resetPasswordPolicy}`;
+        } else {
+          forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.resetPasswordPolicy}`;
+        }
+
+        state.b2cPolicies = {
+          names: {
+            signUpSignIn: state.settings.signUpSignInPolicy,
+            forgotPassword: state.settings.resetPasswordPolicy
+          },
+          authorities: {
+            signUpSignIn: {
+              authority: signUpSignInAuthority,
+            },
+            forgotPassword: {
+              authority: forgotPasswordAuthority,
+            },
+          },
+          authorityDomain: state.settings.authorityDomain,
+        };
+
+        state.msalConfig = {
+          auth: {
+            clientId: state.settings.clientId,
+            authority: state.b2cPolicies.authorities.signUpSignIn.authority,
+            knownAuthorities: [state.b2cPolicies.authorityDomain],
+            redirectUri: state.settings.redirectUri,
+            postLogoutRedirectUri: state.settings.postLogoutRedirectUri,
+          },
+          cache: {
+            cacheLocation: "sessionStorage",
+            storeAuthStateInCookie: false,
+          },
+          system: {
+            logger: state.settings.debug ? new msal.Logger(
+              loggerCallback, {
+              level: msal.LogLevel.Verbose,
+              piiLoggingEnabled: false,
+            }) : null,
+          },
+        };
+
+        state.loginRequest = {
+          scopes: state.settings.loginRequestScopes,
+          state: state.settings.state
+        };
+
+        state.tokenRequest = {
+          scopes: state.settings.tokenRequestScopes,
+          forceRefresh: false,
+        };
+
+        state.myMSALObj = new msal.PublicClientApplication(state.msalConfig);
+      },
+      setLoginRequest(state, payload) {
+        state.loginRequest = Object.assign(state.loginRequest, payload);
+      },
+      setTokenRequest(state, payload) {
+        state.tokenRequest.account = state.myMSALObj.getAccountByHomeId(state.msalAccount.homeAccountId);
+        state.tokenRequest = Object.assign(state.tokenRequest, payload);
+
+        if (state.debug) console.log('Token request: ', state.tokenRequest);
+      },
       setMSALAccount(state, account) {
         state.msalAccount = account;
       },
       setToken(state, token) {
         state.accessToken = token;
       },
-      setSigningIn(state, signingIn){
+      setSigningIn(state, signingIn) {
         state.signingIn = signingIn;
       },
       setSigningOut(state, signingOut) {
@@ -155,22 +189,22 @@ const ssoLib = (config) => {
         state.redirectingForgotPassword = redirectingForgotPassword;
       },
     },
-  
+
     actions: {
-      async selectAccount({ commit, dispatch }) {
-        const currentAccounts = myMSALObj.getAllAccounts();
-  
+      async selectAccount({ state, commit, dispatch }) {
+        const currentAccounts = state.myMSALObj.getAllAccounts();
+
         if (currentAccounts.length < 1) {
           return;
         } else if (currentAccounts.length > 1) {
           const accounts = currentAccounts.filter(account =>
-            account.homeAccountId.toUpperCase().includes(b2cPolicies.names.signUpSignIn.toUpperCase())
-                &&
-                account.idTokenClaims.iss.toUpperCase().includes(b2cPolicies.authorityDomain.toUpperCase())
-                &&
-                account.idTokenClaims.aud === msalConfig.auth.clientId, 
+            account.homeAccountId.toUpperCase().includes(state.b2cPolicies.names.signUpSignIn.toUpperCase())
+            &&
+            account.idTokenClaims.iss.toUpperCase().includes(state.b2cPolicies.authorityDomain.toUpperCase())
+            &&
+            account.idTokenClaims.aud === state.msalConfig.auth.clientId,
           );
-  
+
           if (accounts.length > 1) {
             // localAccountId identifies the entity for which the token asserts information.
             if (accounts.every(account => account.localAccountId === accounts[0].localAccountId)) {
@@ -184,24 +218,30 @@ const ssoLib = (config) => {
           } else if (accounts.length === 1) {
             commit('setMSALAccount', accounts[0]);
           }
-  
+
         } else if (currentAccounts.length === 1) {
           commit('setMSALAccount', currentAccounts[0]);
         }
 
         return;
       },
-  
-      async msalSignIn({ commit }, params = {}) {
+
+      async msalSignIn({ state, commit }, params = {}) {
         commit('setSigningIn', true);
-        loginRequest = Object.assign(loginRequest, params);
-        return myMSALObj.loginRedirect(loginRequest);
+        commit('setLoginRequest', params);
+        return state.myMSALObj.loginRedirect(state.loginRequest);
       },
-  
+
+      async cityEmployeeSignIn({ state, commit }) {
+        const config = { ...state.settings, ...{ cityEmployee: true }};
+        commit('setMSALObject', config);
+        return state.myMSALObj.loginRedirect(state.loginRequest);
+      },
+
       async msalSignOut({ state, commit, dispatch }, redirectQueryParams = '') {
         commit('setSigningOut', true);
 
-        let redirectURL = msalConfig.auth.postLogoutRedirectUri;
+        let redirectURL = state.msalConfig.auth.postLogoutRedirectUri;
         if (typeof redirectQueryParams === 'string' && redirectQueryParams != '') {
           redirectURL += `?${redirectQueryParams}`;
         }
@@ -210,19 +250,18 @@ const ssoLib = (config) => {
           postLogoutRedirectUri: redirectURL,
         };
         await dispatch(state.signOutAction, {}, { root: true });
-        return myMSALObj.logoutRedirect(logoutRequest);
+        return state.myMSALObj.logoutRedirect(logoutRequest);
       },
-  
-      msalForgotPassword({ commit }) {
+
+      msalForgotPassword({ state, commit }) {
         commit('setRedirectingForgotPassword', true);
-        return myMSALObj.loginRedirect(b2cPolicies.authorities.forgotPassword);
+        return state.myMSALObj.loginRedirect(state.b2cPolicies.authorities.forgotPassword);
       },
-  
+
       async getAuthToken({ state, commit, dispatch }, params = {}) {
-        tokenRequest.account = myMSALObj.getAccountByHomeId(state.msalAccount.homeAccountId);
-        tokenRequest = Object.assign(tokenRequest, params);
+        commit('setTokenRequest', params);
         try {
-          const response = await myMSALObj.acquireTokenSilent(tokenRequest);
+          const response = await state.myMSALObj.acquireTokenSilent(state.tokenRequest);
           if (!response.accessToken || response.accessToken === "") {
             throw new msal.InteractionRequiredAuthError;
           } else {
@@ -235,7 +274,7 @@ const ssoLib = (config) => {
           if (error instanceof msal.InteractionRequiredAuthError) {
             // fallback to interaction when silent call fails
             try {
-              return myMSALObj.acquireTokenRedirect(tokenRequest);
+              return state.myMSALObj.acquireTokenRedirect(state.tokenRequest);
             } catch (error) {
               if (state.debug) console.log(error);
             }
@@ -249,11 +288,11 @@ const ssoLib = (config) => {
         if (state.debug) console.log('Attempting to handle redirect promise...');
 
         try {
-          const response = await myMSALObj.handleRedirectPromise();
+          const response = await state.myMSALObj.handleRedirectPromise();
           if (state.debug) console.log("Redirect response: ", response);
 
-          if (response) {
-            if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.signUpSignIn.toUpperCase()) {
+          if (response) {    
+            if (response.idTokenClaims['acr'].toUpperCase() === state.b2cPolicies.names.signUpSignIn.toUpperCase()) {
               // Set the state signing-in to true, the user is still signing into the system.
               commit('setSigningIn', true);
 
@@ -263,8 +302,8 @@ const ssoLib = (config) => {
               // Let's get the SSO token.
               await dispatch('getAuthToken', authTokenParams);
 
-              return response;              
-            } else if (response.idTokenClaims['acr'].toUpperCase() === b2cPolicies.names.forgotPassword.toUpperCase()) {
+              return response;
+            } else if (response.idTokenClaims['acr'].toUpperCase() === state.b2cPolicies.names.forgotPassword.toUpperCase()) {
               if (state.debug) console.log('Went throu forgot password');
               if (state.forgotPasswordAction) {
                 commit('setRedirectingForgotPassword', true);
@@ -275,7 +314,7 @@ const ssoLib = (config) => {
               return response;
             }
           }
-          
+
           commit('setSigningIn', false);
           return null;
         } catch (error) {
@@ -310,13 +349,30 @@ export default {
       throw Error('You must pass-over the store when registering this plugin.');
     }
 
+    let clientInfoObject = {};
+    if (window.location.hash) {
+      const regex = /client_info=([^&]+)/;
+      const match = String(window.location.hash).match(regex);
+
+      if (match && match[1]) {
+        let clientInfoValue = decodeURIComponent(match[1]);
+        clientInfoObject = JSON.parse(window.atob(clientInfoValue));
+      }
+    }
+
     // Dinamically register module
-    const phillyAccount = ssoLib(config);
+    const phillyAccount = ssoLib();
     store.registerModule('phillyAccount', phillyAccount);
-  
+
+    // set object
+    if (String(clientInfoObject?.uid).toUpperCase().includes(B2C_1A_AD_SIGNIN_ONLY)) {
+      config.cityEmployee = true;
+    }
+    store.commit('phillyAccount/setMSALObject', config);
+
     // Handle page refresh.
     store.dispatch('phillyAccount/selectAccount');
-    
+
     if (!config.dontHandleRedirectAutomatically) {
       store.dispatch('phillyAccount/handleRedirect');
     }
