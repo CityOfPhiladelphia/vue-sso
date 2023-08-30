@@ -27,6 +27,8 @@ const ssoLib = () => {
   const phillyAccount = {
     namespaced: true,
     state: ({
+      customPostbackObject: {},
+
       signInAction: '',
       signOutAction: '',
       forgotPasswordAction: '',
@@ -72,11 +74,22 @@ const ssoLib = () => {
       setMSALObject(state, config) {
         state.myMSALObj = null;
 
-        state.b2cScopes =  [`https://${state.settings.b2cEnvirontment}.onmicrosoft.com/api/read_data`];
-        
+        state.b2cScopes = [`https://${state.settings.b2cEnvirontment}.onmicrosoft.com/api/read_data`];
+
+        // check if config.state is either null or an object. If not, then fail
+        if (typeof config.state !== 'object') {
+          try {
+            config.state = JSON.parse(window.atob(config.state));
+          } catch (error) {
+            // Silence is power.
+            if (config.debug) console.log("State is not an object.", config.state);
+            config.state = null;
+          }
+        }
+
         // Default scopes
-        state.settings.loginRequestScopes = [ "openid", ...state.b2cScopes ];
-        state.settings.tokenRequestScopes = [ ...state.b2cScopes ];
+        state.settings.loginRequestScopes = ["openid", ...state.b2cScopes];
+        state.settings.tokenRequestScopes = [...state.b2cScopes];
 
         const localSettings = !config ? {} : config;
         for (const s in localSettings) {
@@ -87,7 +100,13 @@ const ssoLib = () => {
 
         if (state.settings.cityEmployee) {
           if (state.settings.debug) console.log('City employee detected');
+
           state.settings.signUpSignInPolicy = B2C_1A_AD_SIGNIN_ONLY;
+        }
+
+        if (state.settings.state != null) {
+          if (state.settings.debug) console.log('state.settings.state: ', JSON.stringify(state.settings.state));
+          state.settings.state = window.btoa(JSON.stringify({ ...state.settings.state }));
         }
 
         state.signInAction = state.settings.signInAction;
@@ -138,6 +157,7 @@ const ssoLib = () => {
             knownAuthorities: [state.b2cPolicies.authorityDomain],
             redirectUri: state.settings.redirectUri,
             postLogoutRedirectUri: state.settings.postLogoutRedirectUri,
+            navigateToLoginRequestUrl: false,
           },
           cache: {
             cacheLocation: "sessionStorage",
@@ -188,6 +208,9 @@ const ssoLib = () => {
       setRedirectingForgotPassword(state, redirectingForgotPassword) {
         state.redirectingForgotPassword = redirectingForgotPassword;
       },
+      setCustomPostBackObject(state, customPostbackObject) {
+        state.customPostbackObject = customPostbackObject;
+      },
     },
 
     actions: {
@@ -233,7 +256,7 @@ const ssoLib = () => {
       },
 
       async cityEmployeeSignIn({ state, commit }) {
-        const config = { ...state.settings, ...{ cityEmployee: true }};
+        const config = { ...state.settings, ...{ cityEmployee: true } };
         commit('setMSALObject', config);
         return state.myMSALObj.loginRedirect(state.loginRequest);
       },
@@ -267,7 +290,11 @@ const ssoLib = () => {
           } else {
             if (state.debug) console.log("access_token acquired at: " + new Date().toString());
             commit('setToken', response.accessToken);
-            await dispatch(state.signInAction, response.accessToken, { root: true });
+            const payload = {
+              ...response,
+              customPostbackObject: state.customPostbackObject,
+            }
+            await dispatch(state.signInAction, payload, { root: true });
           }
         } catch (error) {
           if (state.debug) console.log("Silent token acquisition fails. Acquiring token using redirect. \n", error);
@@ -289,9 +316,9 @@ const ssoLib = () => {
 
         try {
           const response = await state.myMSALObj.handleRedirectPromise();
-          if (state.debug) console.log("Redirect response: ", response);
+          if (state.debug) console.log("Redirect response: ", JSON.stringify(response));
 
-          if (response) {    
+          if (response) {
             if (response.idTokenClaims['acr'].toUpperCase() === state.b2cPolicies.names.signUpSignIn.toUpperCase()) {
               // Set the state signing-in to true, the user is still signing into the system.
               commit('setSigningIn', true);
@@ -325,12 +352,18 @@ const ssoLib = () => {
               await dispatch('msalForgotPassword');
               return null;
             } else {
-              // I believe it is better to throw and error and let the user handle it at convinience.
-              if (state.errorHandler) {
-                await dispatch(state.errorHandler, error, { root: true });
+              if (error instanceof msal.AuthError) { // The user probably canceled the login. Just console.log it and ignore.
+                if (state.debug) console.log('Error code: ', error.errorCode);
+                if (state.debug) console.log('Error message: ', error.errorMessage);
               } else {
-                throw Error(error);
+                // I believe it is better to throw and error and let the user handle it at convinience.
+                if (state.errorHandler) {
+                  await dispatch(state.errorHandler, error, { root: true });
+                } else {
+                  throw Error(error);
+                }
               }
+              commit('setSigningIn', false);
             }
           }
 
@@ -350,6 +383,11 @@ export default {
     }
 
     let clientInfoObject = {};
+    let isCityLogin = false;
+    let customPostbackObject = {};
+
+    if (config.debug) console.log('Hash: ', window.location.hash);
+
     if (window.location.hash) {
       const regex = /client_info=([^&]+)/;
       const match = String(window.location.hash).match(regex);
@@ -358,16 +396,37 @@ export default {
         let clientInfoValue = decodeURIComponent(match[1]);
         clientInfoObject = JSON.parse(window.atob(clientInfoValue));
       }
+
+      const regex2 = /state=([^&]+)/;
+      const match2 = String(window.location.hash).match(regex2);
+
+      if (match2 && match2[1]) {
+        let state = decodeURIComponent(match2[1]);
+
+        // split state value by Pipe |
+        const states = state.split('|');
+
+        if (config.debug) console.log('State values: ', states);
+
+        if (states.length > 1) {
+          customPostbackObject = JSON.parse(window.atob(states[1]));
+        }
+      }
     }
+
+    // set object
+    if (String(clientInfoObject?.uid).toUpperCase().includes(B2C_1A_AD_SIGNIN_ONLY) || isCityLogin) {
+      config.cityEmployee = true;
+    }
+
+    if (config.debug) console.log("clientInfoObject: ", JSON.stringify(clientInfoObject));
 
     // Dinamically register module
     const phillyAccount = ssoLib();
     store.registerModule('phillyAccount', phillyAccount);
 
-    // set object
-    if (String(clientInfoObject?.uid).toUpperCase().includes(B2C_1A_AD_SIGNIN_ONLY)) {
-      config.cityEmployee = true;
-    }
+    store.commit("phillyAccount/setCustomPostBackObject", customPostbackObject);
+
     store.commit('phillyAccount/setMSALObject', config);
 
     // Handle page refresh.

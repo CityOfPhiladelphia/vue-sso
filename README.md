@@ -83,3 +83,9 @@ if (error.errorCode === 'no_cached_authority_error') {
   return;
 }
 ```
+
+## Change Log
+
+### Wed. Aug. 30, 2023
+- Updated the `state` parameter in the configuration. It expects and object. This object is returned as part of the payload to the `signInAction` in a pramater called `customPostbackObject`;
+- There is a new action called `cityEmployeeSignIn`, it works the same way of `msalSignIn` but for city employess only.
