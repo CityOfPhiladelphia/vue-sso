@@ -89,3 +89,7 @@ if (error.errorCode === 'no_cached_authority_error') {
 ### Wed. Aug. 30, 2023
 - Updated the `state` parameter in the configuration. It expects and object. This object is returned as part of the payload to the `signInAction` in a pramater called `customPostbackObject`;
 - There is a new action called `cityEmployeeSignIn`, it works the same way of `msalSignIn` but for city employess only.
+
+### Tue. Sep. 12, 2023. 
+- Please ignore version 1.3.1. 
+- Version 1.4.0 adds the `Vue` parameter to the `ssoLib` functio so, it means, when running `Vue.use(VueSSO, { store, config });` the library passes down the Vue insteance to the configuration.
