@@ -22,7 +22,7 @@ function loggerCallback(level, message, containsPii) {
   }
 };
 
-const ssoLib = () => {
+const ssoLib = (Vue) => {
   // Store object. 
   const phillyAccount = {
     namespaced: true,
@@ -94,7 +94,8 @@ const ssoLib = () => {
         const localSettings = !config ? {} : config;
         for (const s in localSettings) {
           if (typeof state.settings[s] !== 'undefined') {
-            state.settings[s] = localSettings[s];
+            Vue.set(state.settings, s, localSettings[s])
+            console.log(`Setting ${s} to ${localSettings[s]}`);
           }
         }
 
@@ -422,7 +423,7 @@ export default {
     if (config.debug) console.log("clientInfoObject: ", JSON.stringify(clientInfoObject));
 
     // Dinamically register module
-    const phillyAccount = ssoLib();
+    const phillyAccount = ssoLib(Vue);
     store.registerModule('phillyAccount', phillyAccount);
 
     store.commit("phillyAccount/setCustomPostBackObject", customPostbackObject);
