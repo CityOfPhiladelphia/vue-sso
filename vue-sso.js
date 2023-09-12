@@ -47,7 +47,7 @@ const ssoLib = () => {
 
       settings: {
         clientId: null,
-        b2cEnvirontment: 'PhilaB2CDev',
+        b2cEnvironment: 'PhilaB2CDev',
         authorityDomain: 'PhilaB2CDev.b2clogin.com',
         redirectUri: 'http://localhost:8080/auth',
         postLogoutRedirectUri: null,
@@ -74,7 +74,7 @@ const ssoLib = () => {
       setMSALObject(state, config) {
         state.myMSALObj = null;
 
-        state.b2cScopes = [`https://${state.settings.b2cEnvirontment}.onmicrosoft.com/api/read_data`];
+        state.b2cScopes = [`https://${state.settings.b2cEnvironment}.onmicrosoft.com/api/read_data`];
 
         // check if config.state is either null or an object. If not, then fail
         if (typeof config.state !== 'object') {
@@ -122,14 +122,14 @@ const ssoLib = () => {
 
         let signUpSignInAuthority = '';
         if (!state.settings.tenantId) {
-          signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvirontment}.onmicrosoft.com/${state.settings.signUpSignInPolicy}`;
+          signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvironment}.onmicrosoft.com/${state.settings.signUpSignInPolicy}`;
         } else {
           signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.signUpSignInPolicy}`;
         }
 
         let forgotPasswordAuthority = '';
         if (!state.settings.tenantId) {
-          forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvirontment}.onmicrosoft.com/${state.settings.resetPasswordPolicy}`;
+          forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvironment}.onmicrosoft.com/${state.settings.resetPasswordPolicy}`;
         } else {
           forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.resetPasswordPolicy}`;
         }
