@@ -19,6 +19,7 @@ const config = {
   redirectUri: 'http://localhost:3000/auth', // Here is your redirect back URL.
   postLogoutRedirectUri: null, // The redirect URL when the ADB2C sign out event finishes.
   signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN', // This is the default Sign In custom policy. (No MFA)
+  signInOnlyPolicy: "B2C_1A_AD_SIGNIN_ONLY", // This is the city employees signing only policy.
   resetPasswordPolicy: 'B2C_1A_PASSWORDRESET' // Default password reset policy
   dontHandleRedirectAutomatically: [Boolean], // If false, you will have to trigger the handleRedirectPromise function yourself. 
   signInAction: 'auth/authenticate', // Store action to be executed after obtaining the token. It pass over the token as a sole parameter.
@@ -48,6 +49,16 @@ For you login, logout and forgot password buttons you can do.
   @click="$store.dispatch('phillyAccount/msalSignIn')"
 >
   Sign in
+</button>
+
+<!-- City employee sign in -->
+<button
+  class="button is-primary"
+  :class="{ 'is-loading': $store.state.phillyAccount.signingIn }"
+  :disabled="$store.state.phillyAccount.signingIn"
+  @click="$store.dispatch('phillyAccount/cityEmployeeSignIn')"
+>
+  City employee sign in 
 </button>
 
 <!-- Forgot password -->
@@ -93,3 +104,6 @@ if (error.errorCode === 'no_cached_authority_error') {
 ### Tue. Sep. 12, 2023. 
 - Please ignore version 1.3.1. 
 - Version 1.4.0 adds the `Vue` parameter to the `ssoLib` functio so, it means, when running `Vue.use(VueSSO, { store, config });` the library passes down the Vue insteance to the configuration.
+
+### Fri. Sep. 15, 2023
+- Version 1.4.1 refactored the whole library to fix an issue when switching between "City employee" and "Regular user" sign in buttons. It should not affect anything from version 1.4.0 and ahead, just apply the fix.
