@@ -1,6 +1,6 @@
 import * as msal from "@azure/msal-browser";
 
-const B2C_1A_AD_SIGNIN_ONLY = 'B2C_1A_AD_SIGNIN_ONLY';
+let myMSALObj = null;
 
 function loggerCallback(level, message, containsPii) {
   if (containsPii) {
@@ -20,19 +20,19 @@ function loggerCallback(level, message, containsPii) {
       console.warn(message);
       return;
   }
-};
+}
 
 const ssoLib = (Vue) => {
-  // Store object. 
+  // Store object.
   const phillyAccount = {
     namespaced: true,
-    state: ({
+    state: {
       customPostbackObject: {},
 
-      signInAction: '',
-      signOutAction: '',
-      forgotPasswordAction: '',
-      errorHandler: '',
+      signInAction: "",
+      signOutAction: "",
+      forgotPasswordAction: "",
+      errorHandler: "",
 
       msalAccount: {},
       accessToken: null,
@@ -43,46 +43,50 @@ const ssoLib = (Vue) => {
       redirectingForgotPassword: false,
       debug: false,
 
+      signingInPolicy: null,
+
       b2cScopes: [],
 
       settings: {
         clientId: null,
-        b2cEnvironment: 'PhilaB2CDev',
-        authorityDomain: 'PhilaB2CDev.b2clogin.com',
-        redirectUri: 'http://localhost:8080/auth',
+        b2cEnvironment: "PhilaB2CDev",
+        authorityDomain: "PhilaB2CDev.b2clogin.com",
+        redirectUri: "http://localhost:8080/auth",
         postLogoutRedirectUri: null,
-        signUpSignInPolicy: 'B2C_1A_SIGNUP_SIGNIN',
-        resetPasswordPolicy: 'B2C_1A_PASSWORDRESET',
-        signInAction: 'auth/authenticate',
-        signOutAction: 'auth/signOut',
+        signUpSignInPolicy: "B2C_1A_SIGNUP_SIGNIN",
+        signInOnlyPolicy: "B2C_1A_AD_SIGNIN_ONLY",
+        resetPasswordPolicy: "B2C_1A_PASSWORDRESET",
+        signInAction: "auth/authenticate",
+        signOutAction: "auth/signOut",
         forgotPasswordAction: null,
         errorHandler: null,
         debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
         tenantId: false,
         state: null,
-        cityEmployee: false,
       },
 
-      b2cPlicies: {},
+      b2cPolicies: {},
       msalConfig: {},
       loginRequest: {},
       tokenRequest: {},
-      myMSALObj: {},
-    }),
+    },
 
     mutations: {
       setMSALObject(state, config) {
-        state.myMSALObj = null;
+        myMSALObj = null;
 
-        state.b2cScopes = [`https://${state.settings.b2cEnvironment}.onmicrosoft.com/api/read_data`];
+        state.b2cScopes = [
+          `https://${state.settings.b2cEnvironment}.onmicrosoft.com/api/read_data`,
+        ];
 
         // check if config.state is either null or an object. If not, then fail
-        if (typeof config.state !== 'object') {
+        if (typeof config.state !== "object") {
           try {
             config.state = JSON.parse(window.atob(config.state));
           } catch (error) {
             // Silence is power.
-            if (config.debug) console.log("State is not an object.", config.state);
+            if (config.debug)
+              console.log("State is not an object.", config.state);
             config.state = null;
           }
         }
@@ -93,21 +97,21 @@ const ssoLib = (Vue) => {
 
         const localSettings = !config ? {} : config;
         for (const s in localSettings) {
-          if (typeof state.settings[s] !== 'undefined') {
-            Vue.set(state.settings, s, localSettings[s])
+          if (typeof state.settings[s] !== "undefined") {
+            Vue.set(state.settings, s, localSettings[s]);
             console.log(`Setting ${s} to ${localSettings[s]}`);
           }
         }
 
-        if (state.settings.cityEmployee) {
-          if (state.settings.debug) console.log('City employee detected');
-
-          state.settings.signUpSignInPolicy = B2C_1A_AD_SIGNIN_ONLY;
-        }
-
         if (state.settings.state != null) {
-          if (state.settings.debug) console.log('state.settings.state: ', JSON.stringify(state.settings.state));
-          state.settings.state = window.btoa(JSON.stringify({ ...state.settings.state }));
+          if (state.settings.debug)
+            console.log(
+              "state.settings.state: ",
+              JSON.stringify(state.settings.state)
+            );
+          state.settings.state = window.btoa(
+            JSON.stringify({ ...state.settings.state })
+          );
         }
 
         state.signInAction = state.settings.signInAction;
@@ -121,24 +125,32 @@ const ssoLib = (Vue) => {
           state.settings.postLogoutRedirectUri = state.settings.redirectUri;
         }
 
-        let signUpSignInAuthority = '';
+        let signUpSignInAuthority = "";
         if (!state.settings.tenantId) {
           signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvironment}.onmicrosoft.com/${state.settings.signUpSignInPolicy}`;
         } else {
           signUpSignInAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.signUpSignInPolicy}`;
         }
 
-        let forgotPasswordAuthority = '';
+        let forgotPasswordAuthority = "";
         if (!state.settings.tenantId) {
           forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvironment}.onmicrosoft.com/${state.settings.resetPasswordPolicy}`;
         } else {
           forgotPasswordAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.resetPasswordPolicy}`;
         }
 
+        let signInOnlyAuthority = "";
+        if (!state.settings.tenantId) {
+          signInOnlyAuthority = `https://${state.settings.authorityDomain}/${state.settings.b2cEnvironment}.onmicrosoft.com/${state.settings.signInOnlyPolicy}`;
+        } else {
+          signInOnlyAuthority = `https://${state.settings.authorityDomain}/${state.settings.tenantId}/${state.settings.signInOnlyPolicy}`;
+        }
+
         state.b2cPolicies = {
           names: {
             signUpSignIn: state.settings.signUpSignInPolicy,
-            forgotPassword: state.settings.resetPasswordPolicy
+            forgotPassword: state.settings.resetPasswordPolicy,
+            signInOnly: state.settings.signInOnlyPolicy,
           },
           authorities: {
             signUpSignIn: {
@@ -147,6 +159,9 @@ const ssoLib = (Vue) => {
             forgotPassword: {
               authority: forgotPasswordAuthority,
             },
+            signInOnly: {
+              authority: signInOnlyAuthority,
+            },
           },
           authorityDomain: state.settings.authorityDomain,
         };
@@ -154,7 +169,16 @@ const ssoLib = (Vue) => {
         state.msalConfig = {
           auth: {
             clientId: state.settings.clientId,
-            authority: state.b2cPolicies.authorities.signUpSignIn.authority,
+            authority1: {
+              authority: state.b2cPolicies.authorities.signUpSignIn.authority,
+              clientId: state.settings.clientId,
+              signInPolicy: state.b2cPolicies.names.signUpSignIn,
+            },
+            authority2: {
+              authority: state.b2cPolicies.authorities.signInOnly.authority,
+              clientId: state.settings.clientId,
+              signInPolicy: state.b2cPolicies.names.signInOnly,
+            },
             knownAuthorities: [state.b2cPolicies.authorityDomain],
             redirectUri: state.settings.redirectUri,
             postLogoutRedirectUri: state.settings.postLogoutRedirectUri,
@@ -165,17 +189,18 @@ const ssoLib = (Vue) => {
             storeAuthStateInCookie: false,
           },
           system: {
-            logger: state.settings.debug ? new msal.Logger(
-              loggerCallback, {
-              level: msal.LogLevel.Verbose,
-              piiLoggingEnabled: false,
-            }) : null,
+            logger: state.settings.debug
+              ? new msal.Logger(loggerCallback, {
+                  level: msal.LogLevel.Verbose,
+                  piiLoggingEnabled: false,
+                })
+              : null,
           },
         };
 
         state.loginRequest = {
           scopes: state.settings.loginRequestScopes,
-          state: state.settings.state
+          state: state.settings.state,
         };
 
         state.tokenRequest = {
@@ -183,16 +208,39 @@ const ssoLib = (Vue) => {
           forceRefresh: false,
         };
 
-        state.myMSALObj = new msal.PublicClientApplication(state.msalConfig);
+        myMSALObj = new msal.PublicClientApplication(state.msalConfig);
       },
       setLoginRequest(state, payload) {
         state.loginRequest = Object.assign(state.loginRequest, payload);
       },
       setTokenRequest(state, payload) {
-        state.tokenRequest.account = state.myMSALObj.getAccountByHomeId(state.msalAccount.homeAccountId);
+        state.tokenRequest.account = myMSALObj.getAccountByHomeId(
+          state.msalAccount.homeAccountId
+        );
+
+        let authoritySettings = {};
+        if (state.signingInPolicy === "signUpSignIn") {
+          authoritySettings = {
+            authority: state.msalConfig.auth.authority1.authority,
+            signInPolicy: state.msalConfig.auth.authority1.signInPolicy,
+            clientId: state.msalConfig.auth.authority1.clientId,
+          };
+        } else if (state.signingInPolicy === "signInOnly") {
+          authoritySettings = {
+            authority: state.msalConfig.auth.authority2.authority,
+            signInPolicy: state.msalConfig.auth.authority2.signInPolicy,
+            clientId: state.msalConfig.auth.authority2.clientId,
+          };
+        }
+
+        payload = {
+          ...payload,
+          ...authoritySettings,
+        };
+
         state.tokenRequest = Object.assign(state.tokenRequest, payload);
 
-        if (state.debug) console.log('Token request: ', state.tokenRequest);
+        if (state.debug) console.log("Token request: ", state.tokenRequest);
       },
       setMSALAccount(state, account) {
         state.msalAccount = account;
@@ -212,97 +260,149 @@ const ssoLib = (Vue) => {
       setCustomPostBackObject(state, customPostbackObject) {
         state.customPostbackObject = customPostbackObject;
       },
+      setSigningInPolicy(state, signingInPolicy) {
+        state.signingInPolicy = signingInPolicy;
+      },
     },
 
     actions: {
       async selectAccount({ state, commit, dispatch }) {
-        const currentAccounts = state.myMSALObj.getAllAccounts();
+        const currentAccounts = myMSALObj.getAllAccounts();
 
         if (currentAccounts.length < 1) {
           return;
         } else if (currentAccounts.length > 1) {
-          const accounts = currentAccounts.filter(account =>
-            account.homeAccountId.toUpperCase().includes(state.b2cPolicies.names.signUpSignIn.toUpperCase())
-            &&
-            account.idTokenClaims.iss.toUpperCase().includes(state.b2cPolicies.authorityDomain.toUpperCase())
-            &&
-            account.idTokenClaims.aud === state.msalConfig.auth.clientId,
+          const accounts = currentAccounts.filter(
+            (account) =>
+              account.homeAccountId
+                .toUpperCase()
+                .includes(
+                  state.b2cPolicies.names[
+                    `${state.signingInPolicy}`
+                  ].toUpperCase()
+                ) &&
+              account.idTokenClaims.iss
+                .toUpperCase()
+                .includes(state.b2cPolicies.authorityDomain.toUpperCase()) &&
+              account.idTokenClaims.aud === state.msalConfig.auth.clientId
           );
 
           if (accounts.length > 1) {
             // localAccountId identifies the entity for which the token asserts information.
-            if (accounts.every(account => account.localAccountId === accounts[0].localAccountId)) {
+            if (
+              accounts.every(
+                (account) =>
+                  account.localAccountId === accounts[0].localAccountId
+              )
+            ) {
               // All accounts belong to the same user
-              commit('setMSALAccount', accounts[0]);
+              if (state.debug) console.log("Setting account to: ", accounts[0]);
+              commit("setMSALAccount", accounts[0]);
             } else {
               // Multiple users detected. Logout all to be safe.
-              await dispatch('msalSignOut');
+              await dispatch("msalSignOut");
               return null;
             }
           } else if (accounts.length === 1) {
-            commit('setMSALAccount', accounts[0]);
+            commit("setMSALAccount", accounts[0]);
           }
-
         } else if (currentAccounts.length === 1) {
-          commit('setMSALAccount', currentAccounts[0]);
+          if (state.debug)
+            console.log("Setting account to: ", currentAccounts[0]);
+          commit("setMSALAccount", currentAccounts[0]);
         }
 
         return;
       },
 
       async msalSignIn({ state, commit }, params = {}) {
-        commit('setSigningIn', true);
-        commit('setLoginRequest', params);
-        return state.myMSALObj.loginRedirect(state.loginRequest);
+        commit("setSigningIn", true);
+        commit("setLoginRequest", {
+          ...params,
+          ...{
+            authority: state.msalConfig.auth.authority1.authority,
+            signInPolicy: state.msalConfig.auth.authority1.signInPolicy,
+            clientId: state.msalConfig.auth.authority1.clientId,
+          },
+        });
+        if (state.debug) console.log("Login request: ", state.loginRequest);
+        return myMSALObj.loginRedirect(state.loginRequest);
       },
 
-      async cityEmployeeSignIn({ state, commit }) {
-        const config = { ...state.settings, ...{ cityEmployee: true } };
-        commit('setMSALObject', config);
-        return state.myMSALObj.loginRedirect(state.loginRequest);
+      async cityEmployeeSignIn({ state, commit }, params = {}) {
+        // commit("setSigningIn", true);
+        commit("setLoginRequest", {
+          ...params,
+          ...{
+            authority: state.msalConfig.auth.authority2.authority,
+            signInPolicy: state.msalConfig.auth.authority2.signInPolicy,
+            clientId: state.msalConfig.auth.authority2.clientId,
+          },
+        });
+        if (state.debug) console.log("Login request: ", state.loginRequest);
+        return myMSALObj.loginRedirect(state.loginRequest);
       },
 
-      async msalSignOut({ state, commit, dispatch }, redirectQueryParams = '') {
-        commit('setSigningOut', true);
+      async msalSignOut({ state, commit, dispatch }, redirectQueryParams = "") {
+        await myMSALObj.initialize();
+
+        commit("setSigningOut", true);
 
         let redirectURL = state.msalConfig.auth.postLogoutRedirectUri;
-        if (typeof redirectQueryParams === 'string' && redirectQueryParams != '') {
+        if (
+          typeof redirectQueryParams === "string" &&
+          redirectQueryParams != ""
+        ) {
           redirectURL += `?${redirectQueryParams}`;
         }
 
         const logoutRequest = {
           postLogoutRedirectUri: redirectURL,
+          ...{
+            authority: state.msalConfig.auth.authority1.authority,
+            signInPolicy: state.msalConfig.auth.authority1.signInPolicy,
+            clientId: state.msalConfig.auth.authority1.clientId,
+          },
         };
         await dispatch(state.signOutAction, {}, { root: true });
-        return state.myMSALObj.logoutRedirect(logoutRequest);
+        return myMSALObj.logoutRedirect(logoutRequest);
       },
 
       msalForgotPassword({ state, commit }) {
-        commit('setRedirectingForgotPassword', true);
-        return state.myMSALObj.loginRedirect(state.b2cPolicies.authorities.forgotPassword);
+        commit("setRedirectingForgotPassword", true);
+        return myMSALObj.loginRedirect(
+          state.b2cPolicies.authorities.forgotPassword
+        );
       },
 
       async getAuthToken({ state, commit, dispatch }, params = {}) {
-        commit('setTokenRequest', params);
+        commit("setTokenRequest", params);
         try {
-          const response = await state.myMSALObj.acquireTokenSilent(state.tokenRequest);
+          const response = await myMSALObj.acquireTokenSilent(
+            state.tokenRequest
+          );
           if (!response.accessToken || response.accessToken === "") {
-            throw new msal.InteractionRequiredAuthError;
+            throw new msal.InteractionRequiredAuthError();
           } else {
-            if (state.debug) console.log("access_token acquired at: " + new Date().toString());
-            commit('setToken', response.accessToken);
+            if (state.debug)
+              console.log("access_token acquired at: " + new Date().toString());
+            commit("setToken", response.accessToken);
             const payload = {
               ...response,
               customPostbackObject: state.customPostbackObject,
-            }
+            };
             await dispatch(state.signInAction, payload, { root: true });
           }
         } catch (error) {
-          if (state.debug) console.log("Silent token acquisition fails. Acquiring token using redirect. \n", error);
+          if (state.debug)
+            console.log(
+              "Silent token acquisition fails. Acquiring token using redirect. \n",
+              error
+            );
           if (error instanceof msal.InteractionRequiredAuthError) {
             // fallback to interaction when silent call fails
             try {
-              return state.myMSALObj.acquireTokenRedirect(state.tokenRequest);
+              return myMSALObj.acquireTokenRedirect(state.tokenRequest);
             } catch (error) {
               if (state.debug) console.log(error);
             }
@@ -313,49 +413,75 @@ const ssoLib = (Vue) => {
       },
 
       async handleRedirect({ state, commit, dispatch }, authTokenParams = {}) {
-        if (state.debug) console.log('Attempting to handle redirect promise...');
+        if (state.debug)
+          console.log("Attempting to handle redirect promise...");
+
+        await myMSALObj.initialize();
 
         try {
-          const response = await state.myMSALObj.handleRedirectPromise();
-          if (state.debug) console.log("Redirect response: ", JSON.stringify(response));
+          const response = await myMSALObj.handleRedirectPromise();
+          if (state.debug)
+            console.log("Redirect response: ", JSON.stringify(response));
 
           if (response) {
-            if (response.idTokenClaims['acr'].toUpperCase() === state.b2cPolicies.names.signUpSignIn.toUpperCase()) {
+            if (
+              response.idTokenClaims["acr"].toUpperCase() ===
+              state.b2cPolicies.names.signUpSignIn.toUpperCase()
+            ) {
+              commit("setSigningInPolicy", "signUpSignIn");
+            } else if (
+              response.idTokenClaims["acr"].toUpperCase() ===
+              state.b2cPolicies.names.signInOnly.toUpperCase()
+            ) {
+              commit("setSigningInPolicy", "signInOnly");
+            } else {
+              commit("setSigningInPolicy", null);
+            }
+
+            if (state.signingInPolicy) {
               // Set the state signing-in to true, the user is still signing into the system.
-              commit('setSigningIn', true);
+              commit("setSigningIn", true);
 
               // Set the phillyAccount information into the state
-              await dispatch('selectAccount');
+              await dispatch("selectAccount");
 
               // Let's get the SSO token.
-              await dispatch('getAuthToken', authTokenParams);
+              await dispatch("getAuthToken", authTokenParams);
 
               return response;
-            } else if (response.idTokenClaims['acr'].toUpperCase() === state.b2cPolicies.names.forgotPassword.toUpperCase()) {
-              if (state.debug) console.log('Went throu forgot password');
+            } else if (
+              response.idTokenClaims["acr"].toUpperCase() ===
+              state.b2cPolicies.names.forgotPassword.toUpperCase()
+            ) {
+              if (state.debug) console.log("Went throu forgot password");
               if (state.forgotPasswordAction) {
-                commit('setRedirectingForgotPassword', true);
+                commit("setRedirectingForgotPassword", true);
 
-                await dispatch(state.forgotPasswordAction, response, { root: true });
+                await dispatch(state.forgotPasswordAction, response, {
+                  root: true,
+                });
               }
 
               return response;
             }
           }
 
-          commit('setSigningIn', false);
+          commit("setSigningIn", false);
           return null;
         } catch (error) {
-          if (state.debug) console.log('Error while handling redirect promise', error);
+          if (state.debug)
+            console.log("Error while handling redirect promise", error);
 
           if (error.errorMessage) {
             if (error.errorMessage.indexOf("AADB2C90118") > -1) {
-              await dispatch('msalForgotPassword');
+              await dispatch("msalForgotPassword");
               return null;
             } else {
-              if (error instanceof msal.AuthError) { // The user probably canceled the login. Just console.log it and ignore.
-                if (state.debug) console.log('Error code: ', error.errorCode);
-                if (state.debug) console.log('Error message: ', error.errorMessage);
+              if (error instanceof msal.AuthError) {
+                // The user probably canceled the login. Just console.log it and ignore.
+                if (state.debug) console.log("Error code: ", error.errorCode);
+                if (state.debug)
+                  console.log("Error message: ", error.errorMessage);
               } else {
                 // I believe it is better to throw and error and let the user handle it at convinience.
                 if (state.errorHandler) {
@@ -364,7 +490,7 @@ const ssoLib = (Vue) => {
                   throw Error(error);
                 }
               }
-              commit('setSigningIn', false);
+              commit("setSigningIn", false);
             }
           }
 
@@ -380,14 +506,13 @@ const ssoLib = (Vue) => {
 export default {
   install: (Vue, { store, config }) => {
     if (!store) {
-      throw Error('You must pass-over the store when registering this plugin.');
+      throw Error("You must pass-over the store when registering this plugin.");
     }
 
     let clientInfoObject = {};
-    let isCityLogin = false;
     let customPostbackObject = {};
 
-    if (config.debug) console.log('Hash: ', window.location.hash);
+    if (config.debug) console.log("Hash: ", window.location.hash);
 
     if (window.location.hash) {
       const regex = /client_info=([^&]+)/;
@@ -405,9 +530,9 @@ export default {
         let state = decodeURIComponent(match2[1]);
 
         // split state value by Pipe |
-        const states = state.split('|');
+        const states = state.split("|");
 
-        if (config.debug) console.log('State values: ', states);
+        if (config.debug) console.log("State values: ", states);
 
         if (states.length > 1) {
           customPostbackObject = JSON.parse(window.atob(states[1]));
@@ -415,26 +540,22 @@ export default {
       }
     }
 
-    // set object
-    if (String(clientInfoObject?.uid).toUpperCase().includes(B2C_1A_AD_SIGNIN_ONLY) || isCityLogin) {
-      config.cityEmployee = true;
-    }
-
-    if (config.debug) console.log("clientInfoObject: ", JSON.stringify(clientInfoObject));
+    if (config.debug)
+      console.log("clientInfoObject: ", JSON.stringify(clientInfoObject));
 
     // Dinamically register module
     const phillyAccount = ssoLib(Vue);
-    store.registerModule('phillyAccount', phillyAccount);
+    store.registerModule("phillyAccount", phillyAccount);
 
     store.commit("phillyAccount/setCustomPostBackObject", customPostbackObject);
 
-    store.commit('phillyAccount/setMSALObject', config);
+    store.commit("phillyAccount/setMSALObject", config);
 
     // Handle page refresh.
-    store.dispatch('phillyAccount/selectAccount');
+    // store.dispatch("phillyAccount/selectAccount");
 
     if (!config.dontHandleRedirectAutomatically) {
-      store.dispatch('phillyAccount/handleRedirect');
+      store.dispatch("phillyAccount/handleRedirect");
     }
   },
 };
