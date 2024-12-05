@@ -73,7 +73,7 @@ export function createPhillyAccountPlugin(config) {
       }
     }
 
-    const phillyAccountState = {
+    const phillyAccountState = ({
       myMSALObj: null,
       customPostbackObject: customPostbackObject ? customPostbackObject : {},
 
@@ -104,8 +104,8 @@ export function createPhillyAccountPlugin(config) {
         signUpSignInPolicy: "B2C_1A_SIGNUP_SIGNIN",
         signInOnlyPolicy: "B2C_1A_AD_SIGNIN_ONLY",
         resetPasswordPolicy: "B2C_1A_PASSWORDRESET",
-        signInAction: "auth/authenticate",
-        signOutAction: "auth/signOut",
+        signInAction: "signIn",
+        signOutAction: "signOut",
         forgotPasswordAction: null,
         errorHandler: null,
         debug: false, // Adding debug instead of removing all console log, At least for now this is needed.
@@ -117,7 +117,7 @@ export function createPhillyAccountPlugin(config) {
       msalConfig: {},
       loginRequest: {},
       tokenRequest: {},
-    };
+    });
 
     const phillyAccountActions = {
       configMSALObject(config) {
@@ -309,6 +309,9 @@ export function createPhillyAccountPlugin(config) {
 
       async msalSignIn(params = {}) {
         await this.myMSALObj.initialize();
+
+        if (this.debug)
+          console.log("What is this?", this);
 
         this.signingIn = true;
         this.loginRequest = Object.assign(this.loginRequest, {
@@ -512,7 +515,7 @@ export function createPhillyAccountPlugin(config) {
             }
           }
 
-          this.setSigningIn = false;
+          this.signingIn = false;
           return null;
         } catch (error) {
           if (this.debug)
@@ -555,7 +558,7 @@ export function createPhillyAccountPlugin(config) {
 
     store.$state.phillyAccount = reactive(phillyAccountState);
     Object.keys(phillyAccountActions).forEach((key) => {
-      store[key] = phillyAccountActions[key].bind(phillyAccountState);
+      store[key] = phillyAccountActions[key].bind(store.$state.phillyAccount);
     });
 
     store.configMSALObject(config);

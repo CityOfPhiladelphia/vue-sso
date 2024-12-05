@@ -10,10 +10,10 @@ And then in your `main.js` paste the following code, and update accordingly.
 
 ```js
 import Vue from 'vue';
-import VueSSO from '@phila/vue-sso';
+import { createPhillyAccountPlugin } from '@phila/vue-sso';
 
 const config = {
-  clientId: '[my-client-uuid]', // Default is null. 
+  clientId: '[my-client-uuid]', // Default is null.
   b2cEnvirontment: 'PhilaB2CDev', // Production will be philab2c.
   authorityDomain: 'PhilaB2CDev.b2clogin.com', // Production will be login.phila.gov
   redirectUri: 'http://localhost:3000/auth', // Here is your redirect back URL.
@@ -22,8 +22,8 @@ const config = {
   signInOnlyPolicy: "B2C_1A_AD_SIGNIN_ONLY", // This is the city employees signing only policy.
   resetPasswordPolicy: 'B2C_1A_PASSWORDRESET' // Default password reset policy
   dontHandleRedirectAutomatically: [Boolean], // If false, you will have to trigger the handleRedirectPromise function yourself. 
-  signInAction: 'auth/authenticate', // Store action to be executed after obtaining the token. It pass over the token as a sole parameter.
-  signOutAction: 'auth/signOut', // Store action to be executed before loging out redirection. No paramters are pass over the action.
+  signInAction: 'signIn', // Store action to be executed after obtaining the token. It passes over the authentication response object as a payload, this one holds the authentication token.
+  signOutAction: 'signOut', // Store action to be executed before loging out redirection. No paramters are pass over the action.
   forgotPasswordAction: null, // Store action that is executed after the reset password flow.
   errorHandler: null, // Store action to handle all non-catched-by-default errors. 
   debug: [Boolean], // If true, the library will log a lot of information into the console. Use this on true only for development.
@@ -33,20 +33,53 @@ const config = {
   state: null, // add an state value. https://learn.microsoft.com/en-us/azure/active-directory/develop/msal-js-pass-custom-state-authentication-request
 };
 
-Vue.use(VueSSO, { store, config }); // The store is required.
+const pinia = createPinia()
+pinia.use(createPhillyAccountPlugin(config));
 ```
-The `Vue.install` function executes the *handleRedirect* action automatically on each refresh, it means, the MSAL library is always checking if your refresh comes from a Microsoft B2C process. If you want to control this yourself on your own situation, _e.g. only when the redirection is on "authentication" page_, then, in your config object you add `dontHandleRedirectAutomatically: true` and then, you must `store.dispatch('phillyAccount/handleRedirect')` on your own.
+The `pinia.use` function executes the *handleRedirect* action automatically on each refresh, it means, the MSAL library is always checking if your refresh comes from a Microsoft B2C process. If you want to control this yourself on your own situation, _e.g. only when the redirection is on "authentication" page_, then, in your config object you add `dontHandleRedirectAutomatically: true` and then, you must `store.dispatch('phillyAccount/handleRedirect')` on your own.
 
 
-For you login, logout and forgot password buttons you can do. 
+In your authentication component you can do: 
+
+```javascript
+<script setup>
+  import { defineStore } from 'pinia';
+
+  // Define your main store
+  const useAuthStore = defineStore('authStore', {
+    actions: {
+      signIn(payload) {
+        console.log('Sign-in', payload);
+      },
+      signOut() {
+        console.log('Sign-out');
+      },
+      forgotPassword() {
+        console.log('Forgot password');
+      },
+      customErrorHandler() {
+        console.log('Custom error handler');
+      },
+    }
+  });
+
+  // Accessing phillyAccount
+  const authStore = useAuthStore();
+
+  const signingIn = computed(() => authStore.$state.phillyAccount.signingIn);
+  const signingOut = computed(() => authStore.$state.phillyAccount.signingOut);
+
+  authStore.handleRedirect(); // Only if dontHandleRedirectAutomatically is set to true.
+</script>
+```
 
 ```html
 <!-- Sign in -->
 <button
   class="button is-primary"
-  :class="{ 'is-loading': $store.state.phillyAccount.signingIn }"
-  :disabled="$store.state.phillyAccount.signingIn"
-  @click="$store.dispatch('phillyAccount/msalSignIn')"
+  :class="{ 'is-loading': signingIn }"
+  :disabled="signingIn"
+  @click="authStore.msalSignIn()"
 >
   Sign in
 </button>
@@ -54,9 +87,9 @@ For you login, logout and forgot password buttons you can do.
 <!-- City employee sign in -->
 <button
   class="button is-primary"
-  :class="{ 'is-loading': $store.state.phillyAccount.signingIn }"
-  :disabled="$store.state.phillyAccount.signingIn"
-  @click="$store.dispatch('phillyAccount/cityEmployeeSignIn')"
+  :class="{ 'is-loading': signingIn }"
+  :disabled="signingIn"
+  @click="authStore.cityEmployeeSignIn()"
 >
   City employee sign in 
 </button>
@@ -64,9 +97,9 @@ For you login, logout and forgot password buttons you can do.
 <!-- Forgot password -->
 <button
   class="button is-primary"
-  :class="{ 'is-loading': $store.state.phillyAccount.redirectingForgotPassword }"
-  :disabled="$store.state.phillyAccount.redirectingForgotPassword"
-  @click="$store.dispatch('phillyAccount/msalForgotPassword');"
+  :class="{ 'is-loading': redirectingForgotPassword }"
+  :disabled="redirectingForgotPassword"
+  @click="authStore.msalForgotPassword()"
 >
   Forgot password
 </button>
@@ -74,15 +107,15 @@ For you login, logout and forgot password buttons you can do.
 <!-- Sign Out -->
 <button
   class="button is-primary"
-  :class="{ 'is-loading': $store.state.phillyAccount.signingOut }"
-  :disabled="$store.state.phillyAccount.signingOut"
-  @click="$store.dispatch('phillyAccount/msalSignOut')"
+  :class="{ 'is-loading': signingOut }"
+  :disabled="signingOut"
+  @click="$authStore.msalSignOut()"
 >
   Sign out
 </button>
 ```
 
-This library will inject into your vuex store (that's why the store is required) a new module called *phillyAccount* with the required statuses, mutations, and actions for page all redirection SSO process.
+This library will inject into your pinia store (that's why the store is required).
 
 
 ## Known issues:
@@ -90,12 +123,15 @@ This library will inject into your vuex store (that's why the store is required)
 
 ```
 if (error.errorCode === 'no_cached_authority_error') {
-  dispatch('phillyAccount/msalSignIn', {}, { root: true });
+  $authStore.msalSignIn();
   return;
 }
 ```
 
 ## Change Log
+
+### Dec 5, 2024. 
+- Upgraded to support vue3 with pinia.
 
 ### Wed. Aug. 30, 2023
 - Updated the `state` parameter in the configuration. It expects and object. This object is returned as part of the payload to the `signInAction` in a pramater called `customPostbackObject`;
