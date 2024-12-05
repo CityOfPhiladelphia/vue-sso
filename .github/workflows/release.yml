@@ -34,7 +34,9 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "Releasing on main branch"
             npx semantic-release
           elif [ "${{ github.ref }}" == "refs/heads/beta" ]; then
+            echo "Releasing on beta branch"
             npx semantic-release --branch beta --tag beta
           fi
