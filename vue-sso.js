@@ -1,4 +1,5 @@
 import * as msal from "@azure/msal-browser";
+import { reactive } from "vue";
 
 // A few helpers.
 function isAsyncFunction(func) {
@@ -27,13 +28,10 @@ function loggerCallback(level, message, containsPii) {
 
 // pinia module object.
 export function createPhillyAccountPlugin(config) {
-  let reactive;
-  try {
-    reactive = require("vue").reactive;
-  } catch (err) {
-    console.error("Vue 3 is required to use this plugin.");
-    return;
+  if (!reactive) {
+    throw new Error("Vue 3 is required to use this plugin.");
   }
+
   return (context) => {
     const { store } = context;
 
