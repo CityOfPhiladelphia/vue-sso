@@ -40,6 +40,13 @@ export function createPhillyAccountPlugin(config) {
       return;
     }
 
+    // store id must include the word auth
+    if (!store.$id.toLowerCase().includes("auth")) {
+      return;
+    }
+
+    if (config.debug) console.log("Connecting to store: ", store.$id);
+
     let clientInfoObject = {};
     let customPostbackObject = {};
 
@@ -545,7 +552,7 @@ export function createPhillyAccountPlugin(config) {
                   throw Error(error);
                 }
               }
-              this.setSigningIn = false;
+              this.signingIn = false;
             }
           }
 
