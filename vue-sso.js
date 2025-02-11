@@ -568,8 +568,8 @@ export function createPhillyAccountPlugin(config) {
 
     store.configMSALObject(config);
 
-    // if (!config.dontHandleRedirectAutomatically) {
-    //   store.handleRedirect();
-    // }
+    if (!config.dontHandleRedirectAutomatically) {
+      store.handleRedirect();
+    }
   };
 }
